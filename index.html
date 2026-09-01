@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ラボ式・漢字プリントメーカー</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --font-kyokasho: "UD Digi Kyokasho NP", "UD Digi Kyokasho N", "UDデジタル教科書体 NP", "UDデジタル教科書体 N";
+      --font-gothic: "BIZ UDPGothic", "BIZ UDGothic";
+      --kanji-scale: 1;
+      --yomi-scale: 1;
+      --kanji-pt: 24.2pt;
+      --yomi-pt: 10.45pt;
+      --label-kanji-pt: 11pt;
+      --label-yomi-pt: 10.45pt;
+      --half-label: 8.8mm;
+      --half-kanji-pt: 32pt;
+      --half-yomi-pt: 13pt;
+      --half-kanji-h: 50.8mm;
+      --half-mark-h: 6.2mm;
+      --half-yomi-h: 49.2mm;
+      --half-grid: #9ed8ea;
+      --std-line: #767171;
+      --std-orange: #ff6600;
+      --std-num-orange: #ed7d31;
+      --std-label: 5.2mm;
+      --std-meta-w: 16mm;
+      --std-spacer-h: 3.5mm;
+      --std-yomi-h: 32.5mm;
+      --yomi-col-gap: 1.5mm;
+      --std-num-shift: 0.5mm;
+      --std-num-hshift: 0.35mm;
+    }
+    @font-face {
+      font-family: "UDKyokashoN";
+      src: local("UD Digi Kyokasho N"),
+           local("UDデジタル教科書体 N"),
+           local("UDDigiKyokashoN");
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "UDKyokashoN";
+      src: local("UD Digi Kyokasho N Bold"),
+           local("UDデジタル教科書体 N Bold"),
+           local("UDDigiKyokashoN-Bold");
+      font-weight: 700;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "UDKyokasho";
+      src: local("UD Digi Kyokasho NP"), local("UD Digi Kyokasho N"),
+           local("UDデジタル教科書体 NP"), local("UDデジタル教科書体 N"),
+           local("UDDigiKyokashoNP"), local("UDDigiKyokashoN");
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "UDKyokasho";
+      src: local("UD Digi Kyokasho NP Bold"), local("UD Digi Kyokasho N Bold"),
+           local("UDDigiKyokashoNP-Bold"), local("UDDigiKyokashoN-Bold");
+      font-weight: 700;
+      font-style: normal;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: var(--font-gothic); }
+
+    .print-paper {
+      font-family: "UDKyokasho", var(--font-kyokasho);
+      background: white;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin: 0 auto;
+      flex-shrink: 0;
+    }
+    .print-paper.font-gothic {
+      font-family: var(--font-gothic);
+    }
+    .template-standard {
+      width: 297mm;
+      height: 210mm;
+      min-width: 297mm;
+      min-height: 210mm;
+      max-width: 297mm;
+      max-height: 210mm;
+      padding: 11.5mm 8mm 11.5mm 11.5mm;
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      overflow: hidden;
+    }
+    .template-half {
+      width: 210mm;
+      height: 297mm;
+      min-width: 210mm;
+      min-height: 297mm;
+      max-width: 210mm;
+      max-height: 297mm;
+      padding: 12.7mm 10mm 13.6mm 13.1mm;
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      overflow: hidden;
+    }
+    .template-portrait {
+      width: 210mm;
+      height: 297mm;
+      padding: 12mm;
+    }
+
+    /* ===== スタンダード（A4横・縦書き） ===== */
+    .std-table {
+      flex: 1 1 auto;
+      width: 0;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: flex-start;
+      align-items: stretch;
+      overflow: hidden;
+      border-top: 0.5pt solid var(--std-line);
+      border-left: 0.5pt solid var(--std-line);
+    }
+    .std-col {
+      flex: 1 0 0;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .std-col.label {
+      width: var(--std-label);
+      flex: 0 0 var(--std-label);
+    }
+    .std-col.label .std-cell {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      line-height: 1;
+      min-height: 0;
+    }
+    .std-col.label .std-cell.std-kanji,
+    .std-col.label .std-cell.std-practice {
+      font-size: calc(var(--label-kanji-pt) * var(--kanji-scale));
+    }
+    .std-col.label .std-cell.std-kanji {
+      padding-top: 0.8mm;
+    }
+    .std-col.label .std-cell.std-yomi {
+      font-size: calc(var(--label-yomi-pt) * var(--yomi-scale));
+      padding: 1.2mm 0 1mm;
+    }
+    .std-cell {
+      border-right: 0.5pt solid var(--std-line);
+      border-bottom: 0.5pt solid var(--std-line);
+      overflow: hidden;
+      min-height: 0;
+    }
+    .std-kanji,
+    .std-yomi,
+    .std-practice {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .std-kanji,
+    .std-practice {
+      flex: 0 0 calc((100% - var(--std-spacer-h) - var(--std-yomi-h)) / 4);
+      height: calc((100% - var(--std-spacer-h) - var(--std-yomi-h)) / 4);
+      min-height: 0;
+    }
+    .std-kanji {
+      font-size: calc(var(--kanji-pt) * var(--kanji-scale));
+      line-height: 1;
+      padding-top: 0.8mm;
+    }
+    .std-spacer {
+      flex: 0 0 var(--std-spacer-h);
+      height: var(--std-spacer-h);
+      min-height: 0;
+    }
+    .std-yomi {
+      flex: 0 0 var(--std-yomi-h);
+      height: var(--std-yomi-h);
+      min-height: 0;
+      font-size: calc(var(--yomi-pt) * var(--yomi-scale));
+      line-height: 1;
+      padding: 1.2mm 0 1mm;
+    }
+    .std-vtext {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      line-height: 1;
+    }
+    .std-yomi .std-vtext,
+    .half-yomi .std-vtext {
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: center;
+      align-items: flex-start;
+      writing-mode: horizontal-tb;
+      height: 100%;
+      max-height: 100%;
+      overflow: hidden;
+      gap: var(--yomi-col-gap);
+    }
+    .std-yomi .yomi-col,
+    .half-yomi .yomi-col {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      line-height: calc(1em + var(--yomi-col-gap));
+      height: 100%;
+      max-height: 100%;
+      flex: 0 0 auto;
+      white-space: normal;
+    }
+    .yomi-hl {
+      position: relative;
+      color: var(--std-orange);
+      display: inline-block;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      line-height: inherit;
+      max-height: 100%;
+      padding-right: 0;
+      white-space: normal;
+    }
+    .yomi-hl::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0.08em;
+      width: 0;
+      border-right: 1px solid currentColor;
+      pointer-events: none;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .std-meta {
+      width: var(--std-meta-w);
+      flex: 0 0 var(--std-meta-w);
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 0;
+    }
+    .std-id {
+      font-size: 9pt;
+      letter-spacing: 0.04em;
+      line-height: 1;
+      margin: 0 0 0.8mm;
+      white-space: nowrap;
+      color: #262626;
+    }
+    .std-num {
+      width: 12mm;
+      height: 12.8mm;
+      border: 2.2pt solid var(--std-num-orange);
+      border-radius: 2mm;
+      color: var(--std-num-orange);
+      font-family: "UDKyokashoN", "UD Digi Kyokasho N", "UDデジタル教科書体 N";
+      font-weight: 400;
+      font-size: 22pt;
+      font-variant-numeric: tabular-nums lining-nums;
+      font-feature-settings: "hwid" 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      margin-bottom: 2mm;
+    }
+    .std-num-text {
+      display: block;
+      line-height: 1;
+      transform: translateY(var(--std-num-shift));
+    }
+    .print-paper:not(.font-gothic) .std-num-text--lead-one {
+      transform: translateY(var(--std-num-shift)) translateX(calc(-1 * var(--std-num-hshift)));
+    }
+    .print-paper:not(.font-gothic) .std-num-text--trail-one {
+      transform: translateY(var(--std-num-shift)) translateX(var(--std-num-hshift));
+    }
+    .std-title {
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 0.5mm;
+      max-width: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .std-title-line {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      font-size: 10.5pt;
+      line-height: 1;
+      color: #262626;
+      flex-shrink: 0;
+    }
+    .std-title-wrap {
+      flex: 1 1 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 0;
+      width: 100%;
+    }
+    .std-logo {
+      width: 6.3mm;
+      height: 6.3mm;
+      object-fit: contain;
+      flex-shrink: 0;
+      margin-top: auto;
+    }
+
+    /* ハーフサイズ（A4縦・2枚） */
+    .preview-pages {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    .half-table {
+      flex: 1 1 auto;
+      width: 0;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: flex-start;
+      align-items: stretch;
+      overflow: hidden;
+      border-top: 0.5pt solid var(--std-line);
+      border-left: 0.5pt solid var(--std-line);
+    }
+    .half-col {
+      flex: 1 0 0;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .half-col.label {
+      width: var(--half-label);
+      flex: 0 0 var(--half-label);
+    }
+    .half-col.label .std-cell {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      line-height: 1;
+      min-height: 0;
+      font-size: calc(var(--label-kanji-pt) * var(--kanji-scale));
+      padding: 0;
+    }
+    .half-col.label .half-yomi {
+      font-size: calc(var(--label-yomi-pt) * var(--yomi-scale));
+    }
+    .half-kanji {
+      flex: 0 0 var(--half-kanji-h);
+      height: var(--half-kanji-h);
+      min-height: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      font-size: calc(var(--half-kanji-pt) * var(--kanji-scale));
+      line-height: 1;
+      padding-top: 0.8mm;
+    }
+    .half-mark {
+      flex: 0 0 var(--half-mark-h);
+      height: var(--half-mark-h);
+      min-height: 0;
+    }
+    .half-yomi {
+      flex: 0 0 var(--half-yomi-h);
+      height: var(--half-yomi-h);
+      min-height: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      font-size: calc(var(--half-yomi-pt) * var(--yomi-scale));
+      line-height: 1;
+      padding: 1.2mm 0 1mm;
+    }
+    .half-practice {
+      flex: 1 1 0;
+      min-height: 0;
+      position: relative;
+      border-right: 0.5pt solid var(--std-line);
+      border-bottom: 0.5pt solid var(--half-grid);
+      background: transparent;
+    }
+    .half-practice:last-child {
+      border-bottom-color: var(--std-line);
+    }
+    .half-practice::before,
+    .half-practice::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+    }
+    .half-practice::before {
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      border-left: 0.4pt dashed var(--half-grid);
+    }
+    .half-practice::after {
+      top: 50%;
+      left: 0;
+      right: 0;
+      border-top: 0.4pt dashed var(--half-grid);
+    }
+    .half-label-practice {
+      flex: 1 1 0;
+      min-height: 0;
+      border-right: 0.5pt solid var(--std-line);
+      border-bottom: 0.5pt solid var(--std-line);
+    }
+
+    .preview-shell {
+      flex: 1;
+      min-width: 0;
+      overflow: auto;
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .style-panel summary {
+      list-style: none;
+    }
+    .style-panel summary::-webkit-details-marker {
+      display: none;
+    }
+    .style-panel summary::before {
+      content: "▸";
+      display: inline-block;
+      width: 1em;
+      color: #6b7280;
+    }
+    .style-panel[open] summary::before {
+      content: "▾";
+    }
+
+    @media print {
+      html, body {
+        width: auto !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        background: white !important;
+      }
+      .no-print { display: none !important; }
+      .preview-shell {
+        display: block !important;
+        flex: none !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: auto !important;
+        height: auto !important;
+        min-width: 0 !important;
+      }
+      .preview-scaler {
+        transform: none !important;
+        width: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      .print-paper {
+        box-shadow: none !important;
+        margin: 0 !important;
+        transform: none !important;
+      }
+      .preview-pages {
+        display: block !important;
+        gap: 0 !important;
+      }
+      .template-standard {
+        width: 297mm !important;
+        height: 210mm !important;
+        min-width: 297mm !important;
+        min-height: 210mm !important;
+        max-width: 297mm !important;
+        max-height: 210mm !important;
+        padding: 11.5mm 8mm 11.5mm 11.5mm !important;
+        overflow: hidden !important;
+        page-break-after: avoid;
+        break-after: avoid-page;
+      }
+      .template-half {
+        width: 210mm !important;
+        height: 297mm !important;
+        min-width: 210mm !important;
+        min-height: 297mm !important;
+        max-width: 210mm !important;
+        max-height: 297mm !important;
+        padding: 12.7mm 10mm 13.6mm 13.1mm !important;
+        overflow: hidden !important;
+        page-break-after: always;
+        break-after: page;
+      }
+      .template-half:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+      .yomi-hl {
+        color: var(--std-orange) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .yomi-hl::after {
+        border-right: 1px solid var(--std-orange) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .half-practice,
+      .half-practice::before,
+      .half-practice::after {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+  <style id="printPageStyle"></style>
+</head>
+<body class="bg-gray-100 flex h-screen overflow-hidden">
+
+  <div class="settings-panel w-80 bg-white p-4 shadow-lg flex flex-col gap-2 no-print overflow-y-auto z-10 shrink-0 border-r border-gray-200 min-h-0">
+    <h1 class="text-lg font-bold text-gray-800 leading-tight">ラボ式・漢字プリントメーカー</h1>
+
+    <div>
+      <label class="block text-xs font-bold text-gray-700 mb-0.5">テンプレート</label>
+      <select id="templateSelect" class="w-full border border-gray-300 rounded py-1 px-2 text-sm focus:outline-none focus:border-blue-500">
+        <option value="standard" selected>スタンダード（A4横）</option>
+        <option value="half">ハーフサイズ（A4縦・2枚）</option>
+      </select>
+    </div>
+
+    <details class="style-panel border border-gray-200 rounded">
+      <summary class="cursor-pointer select-none text-xs font-bold text-gray-700 py-1.5 px-2">スタイル</summary>
+      <div class="px-2 pb-2 flex flex-col gap-2">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-0.5">フォント</label>
+          <select id="fontSelect" class="w-full border border-gray-300 rounded py-1 px-2 text-sm focus:outline-none focus:border-blue-500">
+            <option value="kyokasho">教科書体（UDデジタル教科書体）</option>
+            <option value="gothic">ゴシック体（BIZ UDPゴシック）</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-0.5">
+            漢字の文字サイズ <span id="kanjiSizeDisplay" class="font-normal text-gray-500">1.00x</span>
+          </label>
+          <input type="range" id="kanjiSizeSlider" min="0.7" max="1.5" step="0.05" value="1.0" class="w-full accent-blue-600 h-1.5">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-0.5">
+            読みの文字サイズ <span id="yomiSizeDisplay" class="font-normal text-gray-500">1.00x</span>
+          </label>
+          <input type="range" id="yomiSizeSlider" min="0.7" max="1.5" step="0.05" value="1.0" class="w-full accent-blue-600 h-1.5">
+        </div>
+      </div>
+    </details>
+
+    <div>
+      <label class="block text-xs font-bold text-gray-700 mb-0.5">タイトル</label>
+      <textarea id="titleInput" rows="3" class="w-full border border-gray-300 rounded py-1 px-2 focus:outline-none focus:border-blue-500 text-sm leading-snug resize-none"></textarea>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <label class="block text-xs font-bold text-gray-700 mb-0.5">番号</label>
+        <input type="text" id="numberInput" value="" class="w-full border border-gray-300 rounded py-1 px-2 focus:outline-none focus:border-blue-500 text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-gray-700 mb-0.5">識別番号</label>
+        <input type="text" id="idInput" value="" class="w-full border border-gray-300 rounded py-1 px-2 focus:outline-none focus:border-blue-500 text-sm">
+      </div>
+    </div>
+
+    <div class="flex-[1_1_0] flex flex-col min-h-[16rem]">
+      <label class="block text-xs font-bold text-gray-700 mb-0.5">問題データ</label>
+      <textarea id="kanjiInput" class="w-full flex-1 min-h-[12rem] border border-gray-300 rounded p-2 focus:outline-none focus:border-blue-500 text-sm leading-relaxed" placeholder="練習。漢字「れんしゅう」、プリントを作る&#10;鉤括弧。「かぎかっこ」が、オレンジになる&#10;読点。「とうてん」で、行を変えられる&#10;改行。カッコ内も「かい、ぎょう」できる"></textarea>
+    </div>
+
+    <button id="printBtn" type="button" class="bg-blue-600 text-white font-bold py-2.5 px-4 rounded shadow hover:bg-blue-700 transition-colors text-sm shrink-0">
+      PDFで保存 / 印刷
+    </button>
+  </div>
+
+  <div id="previewShell" class="preview-shell">
+    <div id="previewScaler" class="preview-scaler">
+      <div id="previewArea" class="print-paper template-standard"></div>
+    </div>
+  </div>
+
+  <script>
+    const STANDARD_COLS = 20;
+    const HALF_COLS = 10;
+    const HALF_PRACTICE_ROWS = 10;
+
+    const input = document.getElementById('kanjiInput');
+    const templateSelect = document.getElementById('templateSelect');
+    const previewArea = document.getElementById('previewArea');
+    const previewShell = document.getElementById('previewShell');
+    const previewScaler = document.getElementById('previewScaler');
+    const printPageStyle = document.getElementById('printPageStyle');
+    const fontSelect = document.getElementById('fontSelect');
+    const kanjiSizeSlider = document.getElementById('kanjiSizeSlider');
+    const kanjiSizeDisplay = document.getElementById('kanjiSizeDisplay');
+    const yomiSizeSlider = document.getElementById('yomiSizeSlider');
+    const yomiSizeDisplay = document.getElementById('yomiSizeDisplay');
+    const titleInput = document.getElementById('titleInput');
+    const numberInput = document.getElementById('numberInput');
+    const idInput = document.getElementById('idInput');
+
+    function toHalfWidthDigits(str) {
+      return String(str).replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function getTitleLines(raw) {
+      return String(raw).split(/\r?\n/).slice(0, 3).map(line => line.trimEnd());
+    }
+
+    function formatTitleVerticalHtml(raw) {
+      return getTitleLines(raw)
+        .filter(line => line.length > 0)
+        .map(line => {
+          const html = escapeHtml(line).replace(/\r?\n/g, '<br>');
+          return `<span class="std-title-line">${html}</span>`;
+        })
+        .join('');
+    }
+
+    function formatYomiHtml(rawSentence) {
+      const source = escapeHtml(rawSentence);
+      let html = '';
+      let inQuote = false;
+
+      const lineBreak = () => {
+        if (inQuote) html += '</span><br><span class="yomi-hl">';
+        else html += '<br>';
+      };
+
+      for (const ch of source) {
+        if (ch === '「') {
+          inQuote = true;
+          html += '<span class="yomi-hl">';
+          continue;
+        }
+        if (ch === '」') {
+          inQuote = false;
+          html += '</span>';
+          continue;
+        }
+        if (ch === '、' || ch === '\n' || ch === '\r') {
+          if (ch === '\r') continue;
+          lineBreak();
+          continue;
+        }
+        html += ch;
+      }
+      if (inQuote) html += '</span>';
+      return `<span class="yomi-col">${html}</span>`;
+    }
+
+    function formatTitleBlockHtml(raw) {
+      return escapeHtml(getTitleLines(raw).join('\n')).replace(/\n/g, '<br>');
+    }
+
+    function getNumTextAdjustClass(raw) {
+      if (fontSelect.value !== 'kyokasho') return '';
+      const digits = toHalfWidthDigits(raw).trim();
+      if (!digits) return '';
+      const startsWithOne = digits[0] === '1';
+      const endsWithOne = digits[digits.length - 1] === '1';
+      if (startsWithOne && endsWithOne) return '';
+      if (startsWithOne) return 'std-num-text--lead-one';
+      if (endsWithOne) return 'std-num-text--trail-one';
+      return '';
+    }
+
+    function clampTitleInput() {
+      const lines = titleInput.value.split(/\r?\n/);
+      if (lines.length > 3) {
+        titleInput.value = lines.slice(0, 3).join('\n');
+      }
+    }
+
+    function parseItems() {
+      const lines = input.value.split(/\r?\n/);
+      while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+      return lines.map(line => {
+        if (line.trim() === '') return null;
+        const parts = line.split('。');
+        const kanji = parts[0].trim();
+        const rawSentence = parts.slice(1).join('。').trim();
+        return { kanji, yomiHtml: formatYomiHtml(rawSentence) };
+      });
+    }
+
+    function questionColumn(item) {
+      const kanji = item ? item.kanji : '';
+      const yomi = item ? item.yomiHtml : '';
+      return `
+        <div class="std-col">
+          <div class="std-cell std-kanji"><span class="std-vtext">${kanji}</span></div>
+          <div class="std-cell std-spacer"></div>
+          <div class="std-cell std-yomi"><span class="std-vtext">${yomi}</span></div>
+          <div class="std-cell std-practice"></div>
+          <div class="std-cell std-practice"></div>
+          <div class="std-cell std-practice"></div>
+        </div>
+      `;
+    }
+
+    function renderStandard() {
+      const items = parseItems();
+      const emptyCount = Math.max(0, STANDARD_COLS - items.length);
+      const padded = items.concat(Array(emptyCount).fill(null));
+      const title = formatTitleVerticalHtml(titleInput.value);
+      const number = toHalfWidthDigits(numberInput.value);
+      const numAdjustClass = getNumTextAdjustClass(numberInput.value);
+      const id = idInput.value;
+
+      const colsHtml = padded.map(questionColumn).join('');
+
+      previewArea.className = 'print-paper template-standard';
+      previewArea.innerHTML = `
+        <div class="std-table">
+          <div class="std-col label">
+            <div class="std-cell std-kanji">漢字</div>
+            <div class="std-cell std-spacer"></div>
+            <div class="std-cell std-yomi">読み</div>
+            <div class="std-cell std-practice">③</div>
+            <div class="std-cell std-practice">②</div>
+            <div class="std-cell std-practice">①</div>
+          </div>
+          ${colsHtml}
+        </div>
+        <aside class="std-meta">
+          <div class="std-id">${id}</div>
+          <div class="std-num"><span class="std-num-text ${numAdjustClass}">${escapeHtml(number)}</span></div>
+          <div class="std-title-wrap">
+            <div class="std-title">${title}</div>
+            <img class="std-logo" src="timer_logo_v2_3.png" alt="">
+          </div>
+        </aside>
+      `;
+    }
+
+    function halfColumn(item) {
+      const kanji = item ? item.kanji : '';
+      const yomi = item ? item.yomiHtml : '';
+      const practices = Array.from({ length: HALF_PRACTICE_ROWS }, () => '<div class="half-practice"></div>').join('');
+      return `
+        <div class="half-col">
+          <div class="std-cell half-kanji"><span class="std-vtext">${kanji}</span></div>
+          <div class="std-cell half-mark"></div>
+          <div class="std-cell half-yomi"><span class="std-vtext">${yomi}</span></div>
+          ${practices}
+        </div>
+      `;
+    }
+
+    function halfPageHtml(pageItems, title, number, numAdjustClass, id) {
+      const padded = pageItems.concat(Array(Math.max(0, HALF_COLS - pageItems.length)).fill(null));
+      const colsHtml = padded.map(halfColumn).join('');
+      return `
+        <div class="print-paper template-half">
+          <div class="half-table">
+            <div class="half-col label">
+              <div class="std-cell half-kanji">漢字</div>
+              <div class="std-cell half-mark"></div>
+              <div class="std-cell half-yomi">読み</div>
+              <div class="half-label-practice"></div>
+            </div>
+            ${colsHtml}
+          </div>
+          <aside class="std-meta">
+            <div class="std-id">${id}</div>
+            <div class="std-num"><span class="std-num-text ${numAdjustClass}">${escapeHtml(number)}</span></div>
+            <div class="std-title-wrap">
+              <div class="std-title">${title}</div>
+              <img class="std-logo" src="timer_logo_v2_3.png" alt="">
+            </div>
+          </aside>
+        </div>
+      `;
+    }
+
+    function renderHalf() {
+      const items = parseItems();
+      const title = formatTitleVerticalHtml(titleInput.value);
+      const number = toHalfWidthDigits(numberInput.value);
+      const numAdjustClass = getNumTextAdjustClass(numberInput.value);
+      const id = idInput.value;
+      const pageCount = Math.max(2, Math.ceil(items.length / HALF_COLS) || 2);
+      const pages = [];
+      for (let i = 0; i < pageCount; i++) {
+        pages.push(halfPageHtml(
+          items.slice(i * HALF_COLS, (i + 1) * HALF_COLS),
+          title, number, numAdjustClass, id
+        ));
+      }
+      previewArea.className = 'preview-pages';
+      previewArea.innerHTML = pages.join('');
+    }
+
+    function updatePrintPageStyle(mode) {
+      const css = mode === 'half'
+        ? '@page { size: A4 portrait; margin: 0; }'
+        : '@page { size: A4 landscape; margin: 0; }';
+      printPageStyle.textContent = css;
+      document.head.appendChild(printPageStyle);
+    }
+
+    function resetPreviewForPrint() {
+      previewScaler.style.transform = '';
+      previewScaler.style.transformOrigin = '';
+      previewScaler.style.width = '';
+      previewScaler.style.height = '';
+    }
+
+    function fitPreview() {
+      if (window.matchMedia('print').matches) return;
+
+      const shellPad = 64;
+      const availW = Math.max(0, previewShell.clientWidth - shellPad);
+      const availH = Math.max(0, previewShell.clientHeight - shellPad);
+      const paperW = previewArea.offsetWidth;
+      const paperH = previewArea.offsetHeight;
+      if (!paperW || !paperH) return;
+
+      const isHalf = templateSelect.value === 'half';
+      const scale = isHalf
+        ? Math.min(1, availW / paperW)
+        : Math.min(1, availW / paperW, availH / paperH);
+      previewScaler.style.transform = `scale(${scale})`;
+      previewScaler.style.transformOrigin = 'top left';
+      previewScaler.style.width = `${paperW * scale}px`;
+      previewScaler.style.height = `${paperH * scale}px`;
+    }
+
+    function renderPrint() {
+      if (templateSelect.value === 'half') renderHalf();
+      else renderStandard();
+      requestAnimationFrame(fitPreview);
+    }
+
+    function updateFontSettings() {
+      const kanjiScale = kanjiSizeSlider.value;
+      const yomiScale = yomiSizeSlider.value;
+      document.documentElement.style.setProperty('--kanji-scale', kanjiScale);
+      document.documentElement.style.setProperty('--yomi-scale', yomiScale);
+      kanjiSizeDisplay.textContent = Number(kanjiScale).toFixed(2) + 'x';
+      yomiSizeDisplay.textContent = Number(yomiScale).toFixed(2) + 'x';
+      previewArea.classList.toggle('font-gothic', fontSelect.value === 'gothic');
+      previewArea.querySelectorAll('.print-paper').forEach(el => {
+        el.classList.toggle('font-gothic', fontSelect.value === 'gothic');
+      });
+    }
+
+    function parseTemplateParam(raw) {
+      const value = String(raw || '').trim().toLowerCase();
+      if (value === 'half' || value === 'ハーフ' || value === 'ハーフサイズ') return 'half';
+      if (value === 'standard' || value === 'std' || value === 'スタンダード') return 'standard';
+      return null;
+    }
+
+    function applyStateFromUrl() {
+      const params = new URLSearchParams(location.search);
+      const template = parseTemplateParam(params.get('template'));
+      if (template) templateSelect.value = template;
+      if (params.has('title')) titleInput.value = params.get('title');
+      if (params.has('number')) numberInput.value = params.get('number');
+      if (params.has('id')) idInput.value = params.get('id');
+      if (params.has('data')) input.value = params.get('data');
+      const font = params.get('font');
+      if (font === 'gothic' || font === 'kyokasho') fontSelect.value = font;
+      if (params.has('kanji')) kanjiSizeSlider.value = params.get('kanji');
+      if (params.has('yomi')) yomiSizeSlider.value = params.get('yomi');
+    }
+
+    function syncStateToUrl() {
+      const url = new URL(location.href);
+      const params = url.searchParams;
+      params.set('template', templateSelect.value);
+      params.set('title', titleInput.value);
+      params.set('number', numberInput.value);
+      params.set('id', idInput.value);
+      params.set('data', input.value);
+      params.set('font', fontSelect.value);
+      params.set('kanji', kanjiSizeSlider.value);
+      params.set('yomi', yomiSizeSlider.value);
+      history.replaceState(null, '', url);
+    }
+
+    let urlSyncTimer = null;
+    function scheduleUrlSync() {
+      clearTimeout(urlSyncTimer);
+      urlSyncTimer = setTimeout(syncStateToUrl, 250);
+    }
+
+    function changeTemplate() {
+      const mode = templateSelect.value;
+      fontSelect.value = 'kyokasho';
+      kanjiSizeSlider.value = '1.0';
+      yomiSizeSlider.value = '1.0';
+      updatePrintPageStyle(mode);
+      updateFontSettings();
+      renderPrint();
+      syncStateToUrl();
+    }
+
+    input.addEventListener('input', () => {
+      renderPrint();
+      scheduleUrlSync();
+    });
+    templateSelect.addEventListener('change', changeTemplate);
+    fontSelect.addEventListener('change', () => {
+      updateFontSettings();
+      renderPrint();
+      scheduleUrlSync();
+    });
+    kanjiSizeSlider.addEventListener('input', () => {
+      updateFontSettings();
+      scheduleUrlSync();
+    });
+    yomiSizeSlider.addEventListener('input', () => {
+      updateFontSettings();
+      scheduleUrlSync();
+    });
+    titleInput.addEventListener('input', () => {
+      clampTitleInput();
+      renderPrint();
+      scheduleUrlSync();
+    });
+    numberInput.addEventListener('input', () => {
+      renderPrint();
+      scheduleUrlSync();
+    });
+    idInput.addEventListener('input', () => {
+      renderPrint();
+      scheduleUrlSync();
+    });
+    window.addEventListener('resize', fitPreview);
+    document.getElementById('printBtn').addEventListener('click', () => {
+      updatePrintPageStyle(templateSelect.value);
+      resetPreviewForPrint();
+      window.print();
+    });
+    window.addEventListener('beforeprint', () => {
+      updatePrintPageStyle(templateSelect.value);
+      resetPreviewForPrint();
+    });
+    window.addEventListener('afterprint', fitPreview);
+    if (window.matchMedia) {
+      window.matchMedia('print').addEventListener('change', (event) => {
+        if (event.matches) {
+          updatePrintPageStyle(templateSelect.value);
+          resetPreviewForPrint();
+        } else {
+          fitPreview();
+        }
+      });
+    }
+
+    applyStateFromUrl();
+    updatePrintPageStyle(templateSelect.value);
+    renderPrint();
+    updateFontSettings();
+  </script>
+</body>
+</html>
