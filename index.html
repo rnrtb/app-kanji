@@ -4,12 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ラボ式・漢字プリントメーカー</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
     :root {
-      --font-kyokasho: "UD Digi Kyokasho NP", "UD Digi Kyokasho N", "UDデジタル教科書体 NP", "UDデジタル教科書体 N";
-      --font-gothic: "BIZ UDPGothic", "BIZ UDGothic";
+      --font-kyokasho: "UD Digi Kyokasho NP", "UD Digi Kyokasho N", "UDデジタル教科書体 NP", "UDデジタル教科書体 N", "BIZ UDPGothic", "BIZ UDGothic", sans-serif;
+      --font-gothic: "BIZ UDPGothic", "BIZ UDGothic", sans-serif;
       --kanji-scale: 1;
       --yomi-scale: 1;
       --kanji-pt: 24.2pt;
@@ -34,42 +37,11 @@
       --std-num-shift: 0.5mm;
       --std-num-hshift: 0.35mm;
     }
-    @font-face {
-      font-family: "UDKyokashoN";
-      src: local("UD Digi Kyokasho N"),
-           local("UDデジタル教科書体 N"),
-           local("UDDigiKyokashoN");
-      font-weight: 400;
-      font-style: normal;
-    }
-    @font-face {
-      font-family: "UDKyokashoN";
-      src: local("UD Digi Kyokasho N Bold"),
-           local("UDデジタル教科書体 N Bold"),
-           local("UDDigiKyokashoN-Bold");
-      font-weight: 700;
-      font-style: normal;
-    }
-    @font-face {
-      font-family: "UDKyokasho";
-      src: local("UD Digi Kyokasho NP"), local("UD Digi Kyokasho N"),
-           local("UDデジタル教科書体 NP"), local("UDデジタル教科書体 N"),
-           local("UDDigiKyokashoNP"), local("UDDigiKyokashoN");
-      font-weight: 400;
-      font-style: normal;
-    }
-    @font-face {
-      font-family: "UDKyokasho";
-      src: local("UD Digi Kyokasho NP Bold"), local("UD Digi Kyokasho N Bold"),
-           local("UDDigiKyokashoNP-Bold"), local("UDDigiKyokashoN-Bold");
-      font-weight: 700;
-      font-style: normal;
-    }
     * { box-sizing: border-box; }
     body { font-family: var(--font-gothic); }
 
     .print-paper {
-      font-family: "UDKyokasho", var(--font-kyokasho);
+      font-family: var(--font-kyokasho);
       background: white;
       box-shadow: 0 4px 15px rgba(0,0,0,0.1);
       margin: 0 auto;
@@ -269,7 +241,7 @@
       border: 2.2pt solid var(--std-num-orange);
       border-radius: 2mm;
       color: var(--std-num-orange);
-      font-family: "UDKyokashoN", "UD Digi Kyokasho N", "UDデジタル教科書体 N";
+      font-family: "UD Digi Kyokasho N", "UDデジタル教科書体 N", "BIZ UDPGothic", "BIZ UDGothic", sans-serif;
       font-weight: 400;
       font-size: 22pt;
       font-variant-numeric: tabular-nums lining-nums;
@@ -566,6 +538,7 @@
             <option value="kyokasho">教科書体（UDデジタル教科書体）</option>
             <option value="gothic">ゴシック体（BIZ UDPゴシック）</option>
           </select>
+          <p class="text-[10px] text-gray-500 mt-1 leading-snug">教科書体がない端末（iPad など）では BIZ UDゴシックになります。</p>
         </div>
         <div>
           <label class="block text-xs font-bold text-gray-700 mb-0.5">
