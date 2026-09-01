@@ -523,7 +523,7 @@
 
     <div>
       <label class="block text-xs font-bold text-gray-700 mb-0.5">テンプレート</label>
-      <select id="templateSelect" class="w-full border border-gray-300 rounded py-1 px-2 text-sm focus:outline-none focus:border-blue-500">
+      <select id="templateSelect" class="w-full border border-gray-300 rounded py-1 px-2 text-sm focus:outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-600 disabled:cursor-not-allowed">
         <option value="standard" selected>スタンダード（A4横）</option>
         <option value="half">ハーフサイズ（A4縦・2枚）</option>
       </select>
@@ -534,7 +534,7 @@
       <div class="px-2 pb-2 flex flex-col gap-2">
         <div>
           <label class="block text-xs font-bold text-gray-700 mb-0.5">フォント</label>
-          <select id="fontSelect" class="w-full border border-gray-300 rounded py-1 px-2 text-sm focus:outline-none focus:border-blue-500">
+          <select id="fontSelect" class="w-full border border-gray-300 rounded py-1 px-2 text-sm focus:outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-600 disabled:cursor-not-allowed">
             <option value="kyokasho">教科書体（UDデジタル教科書体）</option>
             <option value="gothic">ゴシック体（BIZ UDPゴシック）</option>
           </select>
@@ -557,23 +557,23 @@
 
     <div>
       <label class="block text-xs font-bold text-gray-700 mb-0.5">タイトル</label>
-      <textarea id="titleInput" rows="3" class="w-full border border-gray-300 rounded py-1 px-2 focus:outline-none focus:border-blue-500 text-sm leading-snug resize-none"></textarea>
+      <textarea id="titleInput" rows="3" class="w-full border border-gray-300 rounded py-1 px-2 focus:outline-none focus:border-blue-500 text-sm leading-snug resize-none read-only:bg-gray-100 read-only:text-gray-600 read-only:cursor-not-allowed"></textarea>
     </div>
 
     <div class="grid grid-cols-2 gap-2">
       <div>
         <label class="block text-xs font-bold text-gray-700 mb-0.5">番号</label>
-        <input type="text" id="numberInput" value="" class="w-full border border-gray-300 rounded py-1 px-2 focus:outline-none focus:border-blue-500 text-sm">
+        <input type="text" id="numberInput" value="" class="w-full border border-gray-300 rounded py-1 px-2 focus:outline-none focus:border-blue-500 text-sm read-only:bg-gray-100 read-only:text-gray-600 read-only:cursor-not-allowed">
       </div>
       <div>
         <label class="block text-xs font-bold text-gray-700 mb-0.5">識別番号</label>
-        <input type="text" id="idInput" value="" class="w-full border border-gray-300 rounded py-1 px-2 focus:outline-none focus:border-blue-500 text-sm">
+        <input type="text" id="idInput" value="" class="w-full border border-gray-300 rounded py-1 px-2 focus:outline-none focus:border-blue-500 text-sm read-only:bg-gray-100 read-only:text-gray-600 read-only:cursor-not-allowed">
       </div>
     </div>
 
     <div class="flex-[1_1_0] flex flex-col min-h-[16rem]">
       <label class="block text-xs font-bold text-gray-700 mb-0.5">問題データ</label>
-      <textarea id="kanjiInput" class="w-full flex-1 min-h-[12rem] border border-gray-300 rounded p-2 focus:outline-none focus:border-blue-500 text-sm leading-relaxed" placeholder="練習。漢字「れんしゅう」、プリントを作る&#10;鉤括弧。「かぎかっこ」が、オレンジになる&#10;読点。「とうてん」で、行を変えられる&#10;改行。カッコ内も「かい、ぎょう」できる"></textarea>
+      <textarea id="kanjiInput" class="w-full flex-1 min-h-[12rem] border border-gray-300 rounded p-2 focus:outline-none focus:border-blue-500 text-sm leading-relaxed" placeholder="# タイトル=漢字の形と音・意味&#10;# 番号=17&#10;# 識別クラス=光６Ⅰ&#10;練習。漢字「れんしゅう」、プリントを作る&#10;鉤括弧。「かぎかっこ」が、オレンジになる&#10;読点。「とうてん」で、行を変えられる&#10;改行。カッコ内も「かい、ぎょう」できる"></textarea>
     </div>
 
     <button id="printBtn" type="button" class="bg-blue-600 text-white font-bold py-2.5 px-4 rounded shadow hover:bg-blue-700 transition-colors text-sm shrink-0">
@@ -688,16 +688,118 @@
       }
     }
 
-    function parseItems() {
-      const lines = input.value.split(/\r?\n/);
+    const META_KEY_FIELDS = [
+      ['識別クラス', 'id'],
+      ['識別番号', 'id'],
+      ['テンプレート', 'template'],
+      ['タイトル', 'title'],
+      ['フォント', 'font'],
+      ['template', 'template'],
+      ['number', 'number'],
+      ['title', 'title'],
+      ['font', 'font'],
+      ['番号', 'number'],
+      ['数値', 'number'],
+      ['id', 'id'],
+    ].sort((a, b) => b[0].length - a[0].length);
+
+    const META_KEY_PATTERN = new RegExp(
+      '(' + META_KEY_FIELDS.map(([key]) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\s*[=＝]\\s*',
+      'gi'
+    );
+
+    const META_FIELD_BY_KEY = Object.fromEntries(
+      META_KEY_FIELDS.map(([key, field]) => [key.toLowerCase(), field])
+    );
+
+    function isCommentLine(line) {
+      return /^\s*[#＃]/.test(line);
+    }
+
+    function parseFontParam(raw) {
+      const value = String(raw || '').trim().toLowerCase();
+      if (['gothic', 'ゴシック', 'ゴシック体', 'biz', 'biz udゴシック', 'bizudpgothic', 'biz udpgothic'].includes(value)) {
+        return 'gothic';
+      }
+      if (['kyokasho', '教科書体', '教科書', 'ud'].includes(value)) return 'kyokasho';
+      return null;
+    }
+
+    function assignMetaValue(meta, field, value) {
+      if (field === 'title') {
+        const next = String(value).replace(/\\n/g, '\n');
+        meta.title = meta.title ? `${meta.title}\n${next}` : next;
+        meta.title = meta.title.split(/\r?\n/).slice(0, 3).join('\n');
+        return;
+      }
+      meta[field] = value;
+    }
+
+    function mergeCommentMeta(line, meta) {
+      const body = line.replace(/^\s*[#＃]\s*/, '');
+      META_KEY_PATTERN.lastIndex = 0;
+      const match = META_KEY_PATTERN.exec(body);
+      if (!match || match.index !== 0) return;
+      const field = META_FIELD_BY_KEY[match[1].toLowerCase()];
+      if (!field) return;
+      assignMetaValue(meta, field, body.slice(match[0].length).trim());
+    }
+
+    function parseKanjiInput(text) {
+      const meta = {};
+      const lines = String(text).split(/\r?\n/);
       while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
-      return lines.map(line => {
-        if (line.trim() === '') return null;
+      const items = [];
+      for (const line of lines) {
+        if (isCommentLine(line)) {
+          mergeCommentMeta(line, meta);
+          continue;
+        }
+        if (line.trim() === '') {
+          items.push(null);
+          continue;
+        }
         const parts = line.split('。');
         const kanji = parts[0].trim();
         const rawSentence = parts.slice(1).join('。').trim();
-        return { kanji, yomiHtml: formatYomiHtml(rawSentence) };
-      });
+        items.push({ kanji, yomiHtml: formatYomiHtml(rawSentence) });
+      }
+      return { items, meta };
+    }
+
+    function parseItems() {
+      return parseKanjiInput(input.value).items;
+    }
+
+    function hasMeta(meta, key) {
+      return Object.prototype.hasOwnProperty.call(meta, key);
+    }
+
+    function applyMetaFromData() {
+      const { meta } = parseKanjiInput(input.value);
+      const titleLocked = hasMeta(meta, 'title');
+      const numberLocked = hasMeta(meta, 'number');
+      const idLocked = hasMeta(meta, 'id');
+      const template = hasMeta(meta, 'template') ? parseTemplateParam(meta.template) : null;
+      const font = hasMeta(meta, 'font') ? parseFontParam(meta.font) : null;
+
+      if (titleLocked) {
+        titleInput.value = meta.title;
+        clampTitleInput();
+      }
+      if (numberLocked) numberInput.value = meta.number;
+      if (idLocked) idInput.value = meta.id;
+      if (template) {
+        templateSelect.value = template;
+        updatePrintPageStyle(template);
+      }
+      if (font) fontSelect.value = font;
+
+      titleInput.readOnly = titleLocked;
+      numberInput.readOnly = numberLocked;
+      idInput.readOnly = idLocked;
+      templateSelect.disabled = Boolean(template);
+      fontSelect.disabled = Boolean(font);
     }
 
     function questionColumn(item) {
@@ -905,7 +1007,7 @@
 
     function changeTemplate() {
       const mode = templateSelect.value;
-      fontSelect.value = 'kyokasho';
+      if (!fontSelect.disabled) fontSelect.value = 'kyokasho';
       kanjiSizeSlider.value = '1.0';
       yomiSizeSlider.value = '1.0';
       updatePrintPageStyle(mode);
@@ -915,6 +1017,8 @@
     }
 
     input.addEventListener('input', () => {
+      applyMetaFromData();
+      updateFontSettings();
       renderPrint();
       scheduleUrlSync();
     });
@@ -968,6 +1072,7 @@
     }
 
     applyStateFromUrl();
+    applyMetaFromData();
     updatePrintPageStyle(templateSelect.value);
     renderPrint();
     updateFontSettings();
